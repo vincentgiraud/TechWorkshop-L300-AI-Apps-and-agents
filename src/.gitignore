@@ -56,4 +56,4 @@ out/
 *.azuredevops
 
 # Github
-.github/
+# (No .github rules here; managed by root .gitignore)
