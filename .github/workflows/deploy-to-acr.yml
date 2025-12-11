@@ -21,6 +21,23 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Validate ACR secrets
+        run: |
+          if [ -z "${{ secrets.AZURE_CONTAINER_REGISTRY }}" ]; then
+            echo "::error::AZURE_CONTAINER_REGISTRY secret is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.AZURE_CONTAINER_REGISTRY_USERNAME }}" ]; then
+            echo "::error::AZURE_CONTAINER_REGISTRY_USERNAME secret is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.AZURE_CONTAINER_REGISTRY_PASSWORD }}" ]; then
+            echo "::error::AZURE_CONTAINER_REGISTRY_PASSWORD secret is not set"
+            exit 1
+          fi
+          echo "ACR Registry: ${{ secrets.AZURE_CONTAINER_REGISTRY }}"
+          echo "All required ACR secrets are configured"
+
       - name: Create .env file from secret
         run: 'echo "$ENV" > src/.env'
         shell: bash
@@ -34,8 +51,17 @@ jobs:
           username: ${{ secrets.AZURE_CONTAINER_REGISTRY_USERNAME }}
           password: ${{ secrets.AZURE_CONTAINER_REGISTRY_PASSWORD }}
 
+      - name: Verify Docker login
+        run: |
+          echo "Verifying Docker is logged in to ACR..."
+          docker info | grep -i registry || true
+          
       - name: Build and push Docker image
         run: |
           cd src/
-          docker build -t ${{ env.AZURE_CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:latest .
-          docker push ${{ env.AZURE_CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          IMAGE_TAG="${{ secrets.AZURE_CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+          echo "Building image: $IMAGE_TAG"
+          docker build -t "$IMAGE_TAG" .
+          echo "Pushing image: $IMAGE_TAG"
+          docker push "$IMAGE_TAG"
+          echo "Successfully pushed image to ACR"
